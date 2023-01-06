@@ -53,7 +53,9 @@ def extract_questions():
         faqs = soup.find(id="faq")
         # print(faqs)
         for title in faqs.find_all('h3'):
-            faqs_map[faq_name][title.get('id')] = []
+            faqs_map[faq_name][title.get('id')] = {}
+            faqs_map[faq_name][title.get('id')]['title'] = title.text.strip()
+            faqs_map[faq_name][title.get('id')]['links'] = []
             for sibling in title.next_siblings:
                 if '<h3 id' not in str(sibling):
                     if "<a " in str(sibling):
@@ -65,7 +67,7 @@ def extract_questions():
                                     print("there are some weird links, sometimes...")
                                     print(str(child))
                                     continue
-                                faqs_map[faq_name][title.get('id')].append(link)
+                                faqs_map[faq_name][title.get('id')]['links'].append(link)
                 else:
                     break
     with open('questions.json', 'w') as f:
@@ -77,9 +79,11 @@ def match_question_locations():
     questions_links = json.loads(f.read())
     locations_map = {}
     for faq, questions in questions_links.items():
-        for question, links in questions.items():
-            for link in links:
-                if "/faq/" in link and "http" not in link:
+        for question, contents in questions.items():
+            for link in contents['links']:
+                if "/faq/" in link:
+                    if "http" in link:
+                        link = link.split(".org")[1]
                     try:
                         link_parts = link.split("/")
                         locator = link_parts[2]
@@ -91,11 +95,19 @@ def match_question_locations():
                                 locations_map[faq] = {}
                             if question not in locations_map[faq]:
                                 locations_map[faq][question] = []
-                            locations_map[faq][question].append(faq_id + "#" + question_id)
+                            locations_map[faq][question].append({"faq_id": faq_id, "question_id": question_id})
                     except Exception as e:
                         print("Error while parsing link " + link)
                         print(str(e))
                         return
+                if link.startswith("#"):
+                    question_id = link.replace("#", "")
+                    if faq not in locations_map:
+                        locations_map[faq] = {}
+                    if link not in locations_map[faq]:
+                        locations_map[faq][link] = []
+                    locations_map[faq][link].append({"faq_id": faq, "question_id": question_id})
+
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
 
