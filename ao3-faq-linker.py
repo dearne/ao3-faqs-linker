@@ -1,7 +1,5 @@
+import asyncio, json, re, requests
 from bs4 import BeautifulSoup
-import json
-import re
-import requests
 
 faq_links = [
  "https://archiveofourown.org/faq/about-the-archive?language_id=en",
@@ -41,7 +39,7 @@ faq_links = [
  "https://archiveofourown.org/faq/collections-and-challenges?language_id=en",
 ]
 
-def extract_questions():
+async def extract_questions():
     faqs_map = {}
     for link in faq_links:
         faq_name = re.search('faq\/(.+?)\?', link).group(1)
@@ -64,8 +62,7 @@ def extract_questions():
                                 try:
                                     link = re.search('href="(.+?)"', str(child)).group(1)
                                 except:
-                                    print("there are some weird links, sometimes...")
-                                    print(str(child))
+                                    print("weird link found: " + str(child))
                                     continue
                                 faqs_map[faq_name][title.get('id')]['links'].append(link)
                 else:
@@ -111,7 +108,8 @@ def match_question_locations():
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
 
+async def main():
+    await extract_questions()
+    match_question_locations()
 
-
-# extract_questions()
-match_question_locations()
+asyncio.run(main())
