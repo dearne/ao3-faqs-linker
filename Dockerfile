@@ -4,5 +4,6 @@ ADD requirements.txt /
 RUN pip3 install -r requirements.txt
 
 ADD ao3-faq-linker.py /
+ADD credentials-sheets.json /
 
-CMD [ "python3", "./ao3-faq-linker.py" ]
+WORKDIR /srv/otw
