@@ -100,15 +100,14 @@ def match_question_locations():
                             locations_map[faq_id][question_id].append({"faq_id": faq, "question_id": question})
                     except Exception as e:
                         print("Error while parsing link " + link)
-                        print(str(e))
                         return
                 if link.startswith("#"):
                     question_id = link.replace("#", "")
                     if faq not in locations_map:
                         locations_map[faq] = {}
                     if link not in locations_map[faq]:
-                        locations_map[faq][link] = []
-                    locations_map[faq][link].append({"faq_id": faq, "question_id": question_id})
+                        locations_map[faq][question_id] = []
+                    locations_map[faq][question_id].append({"faq_id": faq, "question_id": question})
 
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
@@ -134,11 +133,14 @@ def build_html():
                     for question_id, locations in questions.items():
                         with a.ul():
                             with a.li():
-                                a(question_id)
+                                try:
+                                    a(questions_links[faq_id][question_id]["title"])
+                                except Exception as e:
+                                    print("Error while retrieving question with id '" + question_id + "' in faq '" + faq_id)
                             for location in locations:
                                 with a.ul():
                                     with a.li():
-                                        a(location['faq_id'] + ' (' + location['question_id'] + ')')
+                                        a(questions_links[location['faq_id']][location['question_id']]["title"] + ' (' + location['faq_id'] + ')')
     html = str(a) # casting to string extracts the value
     with open('list.html', 'w') as f:
         print(html, file=f)
