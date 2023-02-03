@@ -1,4 +1,5 @@
-import asyncio, json, re, requests
+import asyncio, json, re, requests, sys
+from airium import Airium
 from bs4 import BeautifulSoup
 
 faq_links = [
@@ -39,17 +40,20 @@ faq_links = [
  "https://archiveofourown.org/faq/collections-and-challenges?language_id=en",
 ]
 
+# loop through all FAQ html pages and extract all questions from their h3 tags
+# with their names and the links they contain -> we'll use these to determine
+# whether a question is featured anywhere else
 async def extract_questions():
     faqs_map = {}
     for link in faq_links:
         faq_name = re.search('faq\/(.+?)\?', link).group(1)
+        print("parsing " + faq_name)
         faqs_map[faq_name] = {}
 
         res = requests.get(link)
         res.raise_for_status()
         soup = BeautifulSoup(res.text, 'html.parser')
         faqs = soup.find(id="faq")
-        # print(faqs)
         for title in faqs.find_all('h3'):
             faqs_map[faq_name][title.get('id')] = {}
             faqs_map[faq_name][title.get('id')]['title'] = title.text.strip()
@@ -70,7 +74,7 @@ async def extract_questions():
     with open('questions.json', 'w') as f:
         print(json.dumps(faqs_map), file=f)
 
-
+# aggregate questions data to figure out what questions are mentioned in other questions somewhere
 def match_question_locations():
     f = open("questions.json", "r")
     questions_links = json.loads(f.read())
@@ -88,11 +92,12 @@ def match_question_locations():
                         if len(faq_path) > 1:
                             faq_id = faq_path[0]
                             question_id = faq_path[1]
-                            if faq not in locations_map:
-                                locations_map[faq] = {}
-                            if question not in locations_map[faq]:
-                                locations_map[faq][question] = []
-                            locations_map[faq][question].append({"faq_id": faq_id, "question_id": question_id})
+                            print(question_id)
+                            if faq_id not in locations_map:
+                                locations_map[faq_id] = {}
+                            if question_id not in locations_map[faq_id]:
+                                locations_map[faq_id][question_id] = []
+                            locations_map[faq_id][question_id].append({"faq_id": faq, "question_id": question})
                     except Exception as e:
                         print("Error while parsing link " + link)
                         print(str(e))
@@ -108,8 +113,51 @@ def match_question_locations():
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
 
+# WIP build simple html page with the output matches. rn the items in the list are garbage
+def build_html():
+    f = open("locations.json", "r")
+    locations = json.loads(f.read())
+    f = open("questions.json", "r")
+    questions_links = json.loads(f.read())
+
+    a = Airium()
+    a('<!DOCTYPE html>')
+    with a.html(lang="pl"):
+        with a.head():
+            a.meta(charset="utf-8")
+            a.title(_t="AO3 FAQs matcher")
+        with a.body():
+            for faq_id, questions in locations.items():
+                with a.ul():
+                    with a.li():
+                        a(faq_id)
+                    for question_id, locations in questions.items():
+                        with a.ul():
+                            with a.li():
+                                a(question_id)
+                            for location in locations:
+                                with a.ul():
+                                    with a.li():
+                                        a(location['faq_id'] + ' (' + location['question_id'] + ')')
+    html = str(a) # casting to string extracts the value
+    with open('list.html', 'w') as f:
+        print(html, file=f)
+
 async def main():
     await extract_questions()
     match_question_locations()
+    build_html()
 
-asyncio.run(main())
+
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        asyncio.run(main())
+    else:
+        operation = sys.argv[1]
+        match operation:
+            case "extract":
+                extract_questions()
+            case "match":
+                match_question_locations()
+            case "html":
+                build_html()
