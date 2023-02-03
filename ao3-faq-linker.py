@@ -161,5 +161,5 @@ if __name__ == "__main__":
                 extract_questions()
             case "match":
                 match_question_locations()
-            case "html":
+            case "buildHtml":
                 build_html()
