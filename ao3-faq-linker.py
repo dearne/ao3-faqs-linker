@@ -114,7 +114,7 @@ def match_question_locations():
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
 
-# WIP build simple html page with the output matches. rn the items in the list are garbage
+# build a simple HTML output page to visualize the matched questions
 def build_html():
     f = open("locations.json", "r")
     locations = json.loads(f.read())
