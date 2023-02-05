@@ -43,7 +43,7 @@ faq_links = [
 # loop through all FAQ html pages and extract all questions from their h3 tags
 # with their names and the links they contain -> we'll use these to determine
 # whether a question is featured anywhere else
-async def extract_questions():
+def extract_questions():
     faqs_map = {}
     for link in faq_links:
         faq_name = re.search('faq\/(.+?)\?', link).group(1)
@@ -54,11 +54,12 @@ async def extract_questions():
         res.raise_for_status()
         soup = BeautifulSoup(res.text, 'html.parser')
         faqs = soup.find(id="faq")
-        for title in faqs.find_all('h3'):
-            faqs_map[faq_name][title.get('id')] = {}
-            faqs_map[faq_name][title.get('id')]['title'] = title.text.strip()
-            faqs_map[faq_name][title.get('id')]['links'] = []
-            for sibling in title.next_siblings:
+        for question_title in faqs.find_all('h3'):
+            faqs_map[faq_name][question_title.get('id')] = {}
+            faqs_map[faq_name][question_title.get('id')]['title'] = question_title.text.strip()
+            faqs_map[faq_name][question_title.get('id')]['links'] = []
+            #the FAQs are all made of sibling elements, so we start crawling them and stop at the next title
+            for sibling in question_title.next_siblings:
                 if '<h3 id' not in str(sibling):
                     if "<a " in str(sibling):
                         for child in sibling.children:
@@ -68,7 +69,7 @@ async def extract_questions():
                                 except:
                                     print("weird link found: " + str(child))
                                     continue
-                                faqs_map[faq_name][title.get('id')]['links'].append(link)
+                                faqs_map[faq_name][question_title.get('id')]['links'].append(link)
                 else:
                     break
     with open('questions.json', 'w') as f:
