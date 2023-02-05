@@ -75,40 +75,41 @@ def extract_questions():
     with open('questions.json', 'w') as f:
         print(json.dumps(faqs_map), file=f)
 
-# aggregate questions data to figure out what questions are mentioned in other questions somewhere
+# aggregate questions data to figure out which questions are mentioned where
 def match_question_locations():
     f = open("questions.json", "r")
-    questions_links = json.loads(f.read())
+    questions_map = json.loads(f.read())
     locations_map = {}
-    for faq, questions in questions_links.items():
-        for question, contents in questions.items():
-            for link in contents['links']:
+    for container_faq_slug, questions in questions_map.items():
+        for container_question_id, links in questions.items():
+            for link in links['links']:
                 if "/faq/" in link:
                     if "http" in link:
                         link = link.split(".org")[1]
                     try:
-                        link_parts = link.split("/")
-                        locator = link_parts[2]
-                        faq_path = locator.split("#")
-                        if len(faq_path) > 1:
-                            faq_id = faq_path[0]
-                            question_id = faq_path[1]
-                            print(question_id)
-                            if faq_id not in locations_map:
-                                locations_map[faq_id] = {}
-                            if question_id not in locations_map[faq_id]:
-                                locations_map[faq_id][question_id] = []
-                            locations_map[faq_id][question_id].append({"faq_id": faq, "question_id": question})
+                        path = link.split("/")
+                        included_question_coordinates = path[2]
+                        coordinates_list = included_question_coordinates.split("#")
+                        if len(coordinates_list) > 1:
+                            included_faq_id = coordinates_list[0]
+                            included_question_id = coordinates_list[1]
+                            if included_faq_id not in locations_map:
+                                locations_map[included_faq_id] = {}
+                            if included_question_id not in locations_map[included_faq_id]:
+                                locations_map[included_faq_id][included_question_id] = []
+                            locations_map[included_faq_id][included_question_id].append({"faq_id": container_faq_slug, "question_id": container_question_id})
                     except Exception as e:
                         print("Error while parsing link " + link)
                         return
+
                 if link.startswith("#"):
-                    question_id = link.replace("#", "")
-                    if faq not in locations_map:
-                        locations_map[faq] = {}
-                    if link not in locations_map[faq]:
-                        locations_map[faq][question_id] = []
-                    locations_map[faq][question_id].append({"faq_id": faq, "question_id": question})
+                    # these links are anchors, referencing their own same FAQs set
+                    included_question_id = link.replace("#", "")
+                    if container_faq_slug not in locations_map:
+                        locations_map[container_faq_slug] = {}
+                    if link not in locations_map[container_faq_slug]:
+                        locations_map[container_faq_slug][included_question_id] = []
+                    locations_map[container_faq_slug][included_question_id].append({"faq_id": container_faq_slug, "question_id": container_question_id})
 
     with open('locations.json', 'w') as f:
         print(json.dumps(locations_map), file=f)
